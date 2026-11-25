@@ -1,0 +1,51 @@
+name: Build and Bundle PODIA-SPECTRA Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies & Build Web App
+        run: |
+          npm ci
+          npm run build
+
+      - name: Sync Capacitor Android & Build Release APK
+        run: |
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: Bundle APK into static/releases
+        run: |
+          mkdir -p static/releases
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk static/releases/podia-spectra-v1.23.0-universal.apk || true
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: podia-spectra-v1.23.0-universal.apk
+          path: static/releases/podia-spectra-v1.23.0-universal.apk
